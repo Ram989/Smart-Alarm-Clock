@@ -1,0 +1,182 @@
+# Installing Packages
+import datetime
+from playsound import playsound
+import pyttsx3
+from newsapi import NewsApiClient
+import speech_recognition as sr
+from time import sleep
+import requests
+import calendar
+import smtplib
+import simplejson
+import urllib.request
+
+# Choosing Waking Time
+alarmHour = int(input("Enter desired waking hour: "))
+alarmMinute = int(input("Enter desired waking minute: "))
+
+# Choosing am or pm
+amPm = str(input("am or pm"))
+
+# Converting to 24 hour clock
+if amPm == "pm" and alarmHour != 12:
+    alarmHour += 12
+
+# Initializing the audio engine
+engine = pyttsx3.init()
+
+# Audio Engine Function
+def Alarm_Voice(text):
+    engine.say(text)
+    engine.runAndWait()
+
+# Initializing News API Key
+newsapi = NewsApiClient(api_key='Enter Key Here')
+
+# /v2/top-headlines
+politics = newsapi.get_top_headlines(q = 'Trump', language='en', page_size = 1)
+business = newsapi.get_top_headlines(country = 'ca', category = 'business', language='en', page_size = 1)
+technology = newsapi.get_top_headlines(q = 'AI', language='en', page_size = 1)
+sports = newsapi.get_top_headlines(country = 'ca', category = 'sports', language='en', page_size = 1)
+science = newsapi.get_top_headlines(country = 'ca', category = 'science', language='en', page_size = 1)
+
+# Isolating the article title
+politics_article = politics['articles'][0]["title"]
+business_article = business['articles'][0]["title"]
+technology_article = technology['articles'][0]["title"]
+sports_article = sports['articles'][0]["title"]
+science_article = science['articles'][0]["title"]
+
+# Isolating the article URL
+politics_URL = politics['articles'][0]["url"]
+business_URL = business['articles'][0]["url"]
+technology_URL = technology['articles'][0]["url"]
+sports_URL = sports['articles'][0]["url"]
+science_URL = science['articles'][0]["url"]
+
+# Article Title List
+articleTitleCategory = [politics_article, business_article, technology_article, sports_article, science_article]
+
+# Article URL List
+articleURLCategory = [politics_URL, business_URL, technology_URL, sports_URL, science_URL]
+
+# Article Dictionary
+articleDictionary = {politics_article: politics_URL, business_article: business_URL,
+                     technology_article: technology_URL, sports_article: sports_URL, science_article : science_URL}
+
+# Record audio and return as a string
+def recordAudio():
+    # Record The Audio
+    r = sr.Recognizer()  # Creating a recognizer object
+
+    # Open the microphone and start recording
+    with sr.Microphone() as source:
+        audio = r.listen(source)
+        print('Say something!')
+    # Use google's speech recognition
+    data = ''
+    try:
+        data = r.recognize_google(audio)
+        print('You said: ' + data)
+    except sr.UnknownValueError:  # Checking for unknown errors
+        print('Google Speech Recognition could not understand the audio')
+    except sr.RequestError:
+        print('Request results from Google Speech Recognition service error')
+
+    return data
+
+# Weather Function
+def Weather():
+    appid = 'http://api.openweathermap.org/data/2.5/weather?appid=EnterKeyHereq='
+    city_name = 'EnterCityNameHere'
+    URL = appid + city_name
+
+    json_data = requests.get(URL).json()
+    weather_data = json_data['weather'][0]['description']
+    temp_data = json_data['main']['temp']
+    temp_data -= 273.15
+    temp_data = round(temp_data)
+    feels_temp_data = json_data['main']['feels_like']
+    feels_temp_data -= 273.15
+    feels_temp_data = round(feels_temp_data)
+    return 'The weather is ' + weather_data + '. ' + 'The temperature is ' + str(temp_data) + \
+           ' degrees Celcius and it feels like ' + str(feels_temp_data) + ' degrees Celcius in ' + city_name
+
+# Date Function
+def getDate():
+    now = datetime.datetime.now()
+    my_date = datetime.datetime.today()
+    weekday = calendar.day_name[my_date.weekday()]
+    monthNum = now.month
+    dayNum = now.day
+
+    month_names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+                   'November', 'December']
+
+    ordinalNumbers = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th', '13th',
+                      '14th', '15th', '16th', '17th', '18th', '19th', '20th', '21st', '22nd', '23rd', '24th', '25th',
+                      '26th', '27th', '28th', '29th', '30th', '31st']
+
+    return 'Today is ' + weekday + ', ' + month_names[monthNum - 1] + ' the ' + ordinalNumbers[dayNum - 1]
+
+# Email Function
+def send_mail(subject, body, reciever):
+    configPassword = 'ENTER PASSWORD HERE'
+    configEmail = 'ENTER EMAIL HERE'
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.ehlo()
+    server.starttls()
+    server.ehlo()
+    server.login(configEmail, configPassword)
+    msg = f"Subject: {subject}\n\n{body}"
+    server.sendmail(configEmail, reciever, msg)
+    server.quit()
+
+# Traffic Function
+def Traffic():
+    home_coord = "43.7210673,-79.3367525" # Home
+    work_coord = "43.6460102,-79.4232135" # School
+
+    # API keys (Google)
+    # request them here: https://developers.google.com/maps/documentation/distance-matrix/get-api-key
+
+    API1 = "ENTER KEY HERE"
+
+    # Create the GET requests
+    url_home2work = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" + home_coord + "&destinations=" + \
+                    work_coord + "&mode=transit&traffic_model=best_guess&departure_time=now&language=en-" \
+                                "EN&sensor=false&key=" + API1
+
+    # Preform the request and read in the JSON data
+    result_home2work = simplejson.load(urllib.request.urlopen(url_home2work))
+
+    # Get the driving time in seconds
+    driving_time_seconds_home2work = result_home2work['rows'][0]['elements'][0]['duration']['value']
+
+    return "It will take you " + str(round(driving_time_seconds_home2work/60)) + ' minutes to get from home to school'
+
+# Alarm Code
+while True:
+    if alarmHour == datetime.datetime.now().hour and alarmMinute == datetime.datetime.now().minute:
+        playsound('Alarm.mp3')
+        Alarm_Voice('Good morning. Hope you slept well. ' + getDate())
+        Alarm_Voice(Weather())
+        Alarm_Voice(Traffic())
+        Alarm_Voice('Would you like to hear the news?')
+        response = recordAudio()
+        response.lower()
+        newsEmail = ""
+        if 'yes' in response:
+            for article in articleTitleCategory:
+                Alarm_Voice(article)
+                Alarm_Voice('Would you like me to send this article to you?')
+                response = recordAudio()
+                response.lower()
+                if 'yes' in response:
+                    newsEmail += "\n\n" + article + ": \n" + articleDictionary[article]
+
+            send_mail('Your News Stories' , newsEmail, 'ENTER Email HERE')
+
+        else:
+            sleep(60)
+        sleep(60)
